@@ -39,4 +39,20 @@ print(hist)
 # 2024-10-31 00:00:00-04:00  64370100        0.0           0.0  
 # 2024-11-01 00:00:00-04:00  65242200        0.0           0.0  
 
-# FOR FINE TUNING MODELS LIKE PROPHET MODELS WE WILL BE USING THE ABOVE DATA. 
+# FOR FINE TUNING MODELS LIKE PROPHET AND FOR DOING THE Risk assessment WE WILL BE USING THE ABOVE and some functions like:
+
+def get_stock_data(stock_symbols, start_date, end_date, market_index='^GSPC'):
+    data = {}
+    for symbol in stock_symbols:
+        stock = yf.Ticker(symbol)
+        stock_data = stock.history(start=start_date, end=end_date)
+        data[symbol] = stock_data['Close']
+    market_data = yf.Ticker(market_index).history(start=start_date, end=end_date)['Close']
+    return data, market_data
+
+
+
+
+
+
+

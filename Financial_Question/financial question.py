@@ -1,4 +1,11 @@
 """This code is by nitin alone"""
+
+"""
+Citation - Title : Financial risk tolerance, An analysis of unexplored factors
+Authors : Ryan Gibson, David Michayluk, Gerhard Van de Venter
+Journal : Financial Services Review 22 (2013) 23-50 
+"""
+
 import os
 import csv
 from transformers import pipeline

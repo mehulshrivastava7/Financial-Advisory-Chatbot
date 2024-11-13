@@ -1,395 +1,556 @@
-import yfinance as yf
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+from prophet import Prophet
+import yfinance as yf
+from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
+from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.seasonal import seasonal_decompose
 import warnings
-import time
-import os
-from tqdm import tqdm
+import logging
+import sys
  
 # Suppress warnings for cleaner output
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
  
-# -------------------------------
-# 1. Load Stock Tickers from CSV
-# -------------------------------
+# --------------------------
+# 1. Suppress Logging
+# --------------------------
  
-def load_stock_tickers(csv_path):
+# Suppress yfinance logging
+logging.getLogger('yfinance').setLevel(logging.WARNING)
+ 
+# Suppress Prophet logging
+logging.getLogger('cmdstanpy').setLevel(logging.ERROR)
+ 
+# --------------------------
+# 2. Prophet Model Functions
+# --------------------------
+ 
+def get_stock_data_prophet(ticker, period='2y'):
     """
-    Load stock tickers from a CSV file.
+    Fetches historical stock data for a given ticker for Prophet.
  
-    Parameters:
-        csv_path (str): Path to the CSV file containing stock tickers.
+    Args:
+        ticker (str): Stock ticker symbol.
+        period (str): Data period (e.g., '2y' for two years).
  
     Returns:
-        list: List of stock tickers.
+        pd.DataFrame: DataFrame containing 'ds' and 'y' columns for Prophet.
+    """
+    stock = yf.download(ticker, period=period, progress=False)
+    df = stock[['Close']].reset_index()
+    # Remove timezone information from datetime column
+    df['Date'] = df['Date'].dt.tz_localize(None)
+    df.columns = ['ds', 'y']  # Prophet requires these column names
+    return df
+ 
+def train_and_predict_prophet(train_df, test_df, future_days=7):
+    """
+    Trains the Prophet model and makes predictions.
+ 
+    Args:
+        train_df (pd.DataFrame): Training DataFrame with 'ds' and 'y'.
+        test_df (pd.DataFrame): Test DataFrame with 'ds' and 'y'.
+        future_days (int): Number of days to forecast beyond the test set.
+ 
+    Returns:
+        tuple: (model, forecast, mse, future_predictions)
     """
     try:
-        df = pd.read_csv(csv_path)
-        # Ensure the 'SYMBOL' column exists
-        if 'SYMBOL' not in df.columns:
-            raise ValueError("CSV file must contain a 'SYMBOL' column.")
+        # Initialize Prophet model with the specified hyperparameters
+        model = Prophet(
+            growth='linear',
+            changepoint_prior_scale=0.014900306553726704,
+            seasonality_prior_scale=0.3836198463360881,
+            seasonality_mode='additive',
+            changepoint_range=0.8205879350577062,
+            n_changepoints=41,
+            daily_seasonality=True,
+            weekly_seasonality=False,
+            yearly_seasonality=False
+        )
         
-        # Extract all unique symbols
-        tickers = df['SYMBOL'].dropna().unique().tolist()
-        print(f"Loaded {len(tickers)} tickers from '{csv_path}'.")
-        return tickers
-    except FileNotFoundError:
-        print(f"Error: The file '{csv_path}' does not exist.")
-        return []
+        # Fit the model on training data
+        model.fit(train_df)
+        
+        # Create dataframe for the test period and future days
+        future = model.make_future_dataframe(periods=len(test_df) + future_days)
+        
+        # Make predictions
+        forecast = model.predict(future)
+        
+        # Extract predictions for the test set
+        test_forecast = forecast.set_index('ds').loc[test_df['ds']]
+        
+        # Calculate MSE for the test set
+        mse = mean_squared_error(test_df['y'], test_forecast['yhat'])
+        
+        # Forecast future days
+        future_days_df = model.make_future_dataframe(periods=future_days)
+        future_forecast = model.predict(future_days_df)
+        
+        future_predictions = future_forecast.tail(future_days)[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+        
+        return model, forecast, mse, future_predictions
     except Exception as e:
-        print(f"Error loading tickers: {e}")
-        return []
+        # Handle exceptions silently
+        raise
  
-# ----------------------------------------
-# 2. Fetch Stock Data in Batches
-# ----------------------------------------
- 
-def fetch_and_save_stock_data(tickers, batch_size=200, start_date='2023-05-01', end_date='2024-11-09', output_csv='sample_indian_stocks_data_full.csv'):
+def plot_predictions_prophet(train_df, test_df, forecast, mse, future_predictions, model):
     """
-    Fetch stock data in batches and append to a CSV file.
+    Plots the Prophet model predictions and components.
  
-    Parameters:
-        tickers (list): List of stock tickers.
-        batch_size (int): Number of tickers to process in each batch.
-        start_date (str): Start date for historical data (YYYY-MM-DD).
-        end_date (str): End date for historical data (YYYY-MM-DD).
-        output_csv (str): Path to the output CSV file.
+    Args:
+        train_df (pd.DataFrame): Training DataFrame.
+        test_df (pd.DataFrame): Test DataFrame.
+        forecast (pd.DataFrame): Forecast DataFrame from Prophet.
+        mse (float): Mean Squared Error on the test set.
+        future_predictions (pd.DataFrame): Future predictions DataFrame.
+        model (Prophet): Trained Prophet model.
     """
-    # Initialize the CSV file with headers if it doesn't exist
-    if not os.path.exists(output_csv):
-        headers = ['Ticker', 'Sector', 'Market Cap', 'P/E Ratio', 'Average Return', 'Volatility']
-        with open(output_csv, 'w') as f:
-            f.write(','.join(headers) + '\n')
-        print(f"Created '{output_csv}' with headers.")
+    plt.figure(figsize=(12, 6))
+    
+    # Plot training data
+    plt.plot(train_df['ds'], train_df['y'], 'b.', label='Training Data')
+    
+    # Plot test data
+    plt.plot(test_df['ds'], test_df['y'], 'r.', label='Test Data')
+    
+    # Plot forecast
+    plt.plot(forecast['ds'], forecast['yhat'], 'k-', label='Forecast')
+    
+    # Confidence intervals
+    plt.fill_between(forecast['ds'],
+                     forecast['yhat_lower'],
+                     forecast['yhat_upper'],
+                     color='gray',
+                     alpha=0.2,
+                     label='Confidence Interval')
+    
+    # Highlight test period
+    plt.axvspan(test_df['ds'].min(), test_df['ds'].max(), color='yellow', alpha=0.1, label='Test Period')
+    
+    # Plot future predictions
+    plt.plot(future_predictions['ds'], future_predictions['yhat'], 'g*', markersize=10, label='Future Predictions')
+    
+    plt.legend()
+    plt.title('AAPL Stock Price Prediction with Prophet')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    plt.grid(True)
+    plt.show()
+    
+    # Plot model components
+    model.plot_components(forecast)
+    plt.show()
+    
+    # Print MSE
+    # Commented out as per user request
+    # print(f"Mean Squared Error on Test Set: {mse:.2f}")
+ 
+def get_future_prediction_metrics_prophet(future_predictions):
+    """
+    Formats future predictions into a DataFrame.
+ 
+    Args:
+        future_predictions (pd.DataFrame): Future predictions DataFrame.
+ 
+    Returns:
+        pd.DataFrame: Formatted future predictions.
+    """
+    metrics = {
+        'date': future_predictions['ds'],
+        'predicted_price': future_predictions['yhat'].round(2),
+        'lower_bound': future_predictions['yhat_lower'].round(2),
+        'upper_bound': future_predictions['yhat_upper'].round(2),
+    }
+    return pd.DataFrame(metrics)
+ 
+# --------------------------
+# 3. ARMA Model Functions
+# --------------------------
+ 
+def get_stock_data_arma(ticker, start_date='2022-11-06', end_date='2024-11-06'):
+    """
+    Fetches historical stock data for a given ticker for ARMA.
+ 
+    Args:
+        ticker (str): Stock ticker symbol.
+        start_date (str): Start date in 'YYYY-MM-DD' format.
+        end_date (str): End date in 'YYYY-MM-DD' format.
+ 
+    Returns:
+        pd.DataFrame: DataFrame containing 'Date' and 'Close' Price.
+    """
+    try:
+        stock = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        if stock.empty:
+            raise ValueError(f"No data found for ticker {ticker}.")
+        df = stock[['Close']].reset_index()
+        df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
+        return df
+    except Exception as e:
+        # Handle exceptions silently
+        return None
+ 
+def determine_arma_order(series, max_lag=10, threshold=0.2):
+    """
+    Determines the optimal ARMA(p, q) order based on ACF and PACF of the series.
+ 
+    Args:
+        series (pd.Series): Time series data.
+        max_lag (int): Maximum lag to consider for ACF and PACF (default 10).
+        threshold (float): Threshold for significance in ACF/PACF values.
+ 
+    Returns:
+        tuple: (p, q) order for ARMA model.
+    """
+    from statsmodels.tsa.stattools import acf, pacf
+ 
+    # Compute PACF and ACF
+    pacf_vals = pacf(series, nlags=max_lag, method='ols')
+    acf_vals = acf(series, nlags=max_lag)
+ 
+    # Determine p (AR order) based on PACF cutoff
+    p = 0
+    for i in range(1, len(pacf_vals)):
+        if abs(pacf_vals[i]) < threshold:
+            p = i
+            break
+ 
+    # Determine q (MA order) based on ACF cutoff
+    q = 0
+    for i in range(1, len(acf_vals)):
+        if abs(acf_vals[i]) < threshold:
+            q = i
+            break
+ 
+    return (p, q)
+ 
+def fit_arma_model(series, order):
+    """
+    Fits an ARMA model to the given time series.
+ 
+    Args:
+        series (pd.Series): Time series data.
+        order (tuple): (p, q) order for ARMA model.
+ 
+    Returns:
+        ARIMAResults: Fitted ARMA model.
+    """
+    try:
+        model = ARIMA(series, order=(order[0], 0, order[1]))
+        model_fit = model.fit()
+        return model_fit
+    except Exception as e:
+        # Handle exceptions silently
+        return None
+ 
+def predict_arma(model_fit, steps=7):
+    """
+    Predicts future prices using the fitted ARMA model.
+ 
+    Args:
+        model_fit (ARIMAResults): Fitted ARMA model.
+        steps (int): Number of future steps to predict.
+ 
+    Returns:
+        pd.Series: Predicted prices.
+    """
+    try:
+        forecast = model_fit.get_forecast(steps=steps)
+        predicted_prices = forecast.predicted_mean
+        return predicted_prices
+    except Exception as e:
+        # Handle exceptions silently
+        return None
+ 
+def evaluate_arma(df, ticker):
+    """
+    Evaluates the ARMA model on the test data.
+ 
+    Args:
+        df (pd.DataFrame): DataFrame containing 'Date' and 'Close' Price.
+        ticker (str): Stock ticker symbol.
+ 
+    Returns:
+        float: MSE of the ARMA model on test data.
+    """
+    # Split data
+    arma_train = df.iloc[-32:-2].copy()  # 30 days before test
+    arma_test = df.iloc[-2:].copy()      # Last 2 days as test
+ 
+    # Ensure enough data
+    if len(arma_train) < 30 or len(arma_test) < 2:
+        return np.inf
+ 
+    # Set Date as index
+    arma_train = arma_train.set_index('Date')['Close']
+    arma_test = arma_test.set_index('Date')['Close']
+ 
+    # Determine ARMA order
+    arma_order = determine_arma_order(arma_train)
+ 
+    # Fit ARMA model
+    arma_model = fit_arma_model(arma_train, arma_order)
+    if arma_model is None:
+        return np.inf
+ 
+    # Predict the last two days
+    try:
+        arma_pred = arma_model.forecast(steps=2)
+        arma_pred.index = arma_test.index  # Align indices
+    except Exception as e:
+        return np.inf
+ 
+    # Calculate MSE
+    arma_mse = mean_squared_error(arma_test, arma_pred)
+    return arma_mse
+ 
+def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, days_shift=5):
+    """
+    Plots the ARMA model predictions and seasonal decomposition with option to shift dates.
+    First day forecast in blue, remaining forecast in red.
+ 
+    Args:
+        df (pd.DataFrame): Original DataFrame with 'Date' and 'Close'.
+        ticker (str): Stock ticker symbol.
+        arma_forecast (pd.Series): Forecasted prices.
+        arma_mse (float): MSE of the ARMA model.
+        model: ARMA model object.
+        forecast: Forecasted components for plotting.
+        days_shift (int): Number of days to shift the dates (default: 3)
+    """
+    # Calculate the date 3 months ago from the most recent data point
+    last_date = df['Date'].max()
+    three_months_ago = last_date - pd.DateOffset(months=1)
+    last_test_date = df.iloc[-2:]['Date'].max()
+    
+    # Filter historical data to include only the last 3 months
+    df_recent = df[df['Date'] >= three_months_ago].copy()
+    
+    # Shift dates by the specified number of days
+    df_recent['Date'] = df_recent['Date'] + pd.DateOffset(days=days_shift)
+    
+    # Determine the split point between historical and forecasted data
+    forecast_start_date = arma_forecast.index[0]
+    
+    # Split the recent data into historical (before forecast) and forecast (after forecast start date)
+    historical_data = df_recent[df_recent['Date'] < forecast_start_date + pd.DateOffset(days=days_shift)]
+    
+    # Shift forecast dates
+    shifted_forecast_index = arma_forecast.index + pd.DateOffset(days=days_shift)
+    shifted_forecast = pd.Series(arma_forecast.values, index=shifted_forecast_index)
+    
+    if forecast_start_date > last_test_date:
+        # Adjust the forecast to align with the last test date (shifted)
+        shifted_forecast.index = pd.date_range(
+            start=last_test_date + pd.DateOffset(days=days_shift),
+            periods=len(shifted_forecast),
+            freq='D'
+        )
+    
+    # Plot the data
+    plt.figure(figsize=(14, 7))
+    
+    # Plot historical data in blue
+    plt.plot(historical_data['Date'], historical_data['Close'],
+             color='blue', label='Historical Data', linewidth=1.5)
+    
+    # Plot first day forecast in blue
+    plt.plot(shifted_forecast.index[:1], shifted_forecast.values[:1],
+             color='blue', linewidth=2)
+    
+    # Plot remaining forecast days in red
+    if len(shifted_forecast) > 1:
+        plt.plot(shifted_forecast.index[1:], shifted_forecast.values[1:],
+                color='red', label='ARMA Forecast', linewidth=2)
+    
+    # Set plot title and labels
+    plt.title(f'{ticker} Stock Opening Price Prediction with ARMA For Next One Week')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.grid(True)
+    # Save the plot
+    plt.savefig(f"{ticker}_analysis.png")
+ 
+    # model.plot_components(forecast)
+ 
+    
+    # # Seasonal Decomposition Plot
+    # try:
+    #     # Perform seasonal decomposition
+    #     decomposition = seasonal_decompose(df.set_index('Date')['Close'], model='additive', period=30)  # Assuming monthly seasonality
+        
+    #     fig = decomposition.plot()
+    #     fig.set_size_inches(14, 10)
+    #     plt.suptitle(f'{ticker} Seasonal Decomposition with ARMA', fontsize=16)
+    #     plt.show()
+    # except Exception as e:
+    pass  # If seasonal decomposition fails, skip plotting
+    
+    # Print MSE
+    # Commented out as per user request
+    # print(f"ARMA Mean Squared Error on Test Set: {arma_mse:.2f}")
+ 
+# --------------------------
+# 4. Model Selection and Plotting
+# --------------------------
+ 
+def select_better_model(arma_mse, prophet_mse):
+    """
+    Selects the better model based on MSE.
+ 
+    Args:
+        arma_mse (float): MSE of ARMA model.
+        prophet_mse (float): MSE of Prophet model.
+ 
+    Returns:
+        str: Name of the better model ('ARMA' or 'Prophet').
+    """
+    if arma_mse < prophet_mse:
+        return 'ARMA'
     else:
-        print(f"Appending to existing '{output_csv}'.")
+        return 'Prophet'
  
-    total_tickers = len(tickers)
-    total_batches = int(np.ceil(total_tickers / batch_size))
+# --------------------------
+# 5. Main Execution Workflow
+# --------------------------
+ 
+def main(sticke):
+    # Fixed stock ticker
+    ticker = sticke
+ 
+    # --------------------------
+    # Prophet Model Execution
+    # --------------------------
     
-    print(f"\nFetching data in {total_batches} batches of {batch_size} tickers each...\n")
+    df_prophet = get_stock_data_prophet(ticker, period='2y')  # Using 2 years to match ARMA's start date
+ 
+    # Ensure there are enough data points
+    if len(df_prophet) < 10:
+        prophet_mse = np.inf
+    else:
+        # Split data into training and test sets (last two days as test)
+        train_df_prophet = df_prophet.iloc[:-2]
+        test_df_prophet = df_prophet.iloc[-2:]
+ 
+        # Train model and get predictions
+        model_prophet, forecast_prophet, mse_prophet, future_predictions_prophet = train_and_predict_prophet(train_df_prophet, test_df_prophet, future_days=7)
+ 
+        # Get future prediction metrics
+        future_metrics_prophet = get_future_prediction_metrics_prophet(future_predictions_prophet)
+ 
+    # --------------------------
+    # ARMA Model Execution
+    # --------------------------
     
-    for i in tqdm(range(0, total_tickers, batch_size), desc="Processing Batches"):
-        batch_tickers = tickers[i:i + batch_size]
-        try:
-            # Fetch historical price data for the batch
-            for ticker in batch_tickers:
-                try:
-                    print(f"Processing {ticker}...")
-                    stock = yf.Ticker(ticker)
-                    
-                    # Fetch historical price data
-                    hist = stock.history(start=start_date, end=end_date)
-                    if hist.empty:
-                        print(f"No historical data found for {ticker}. Skipping.")
-                        continue
-                    
-                    # Calculate daily returns
-                    hist['Daily Return'] = hist['Close'].pct_change()
-                    avg_return = hist['Daily Return'].mean()
-                    volatility = hist['Daily Return'].std()
-                    
-                    # Fetch financial info
-                    info = stock.info
-                    sector = info.get('sector', 'Unknown')
-                    market_cap = info.get('marketCap', np.nan)
-                    pe_ratio = info.get('trailingPE', np.nan)
-                    
-                    # Prepare row data
-                    row = {
-                        'Ticker': ticker,
-                        'Sector': sector,
-                        'Market Cap': market_cap if not pd.isna(market_cap) else '',
-                        'P/E Ratio': pe_ratio if not pd.isna(pe_ratio) else '',
-                        'Average Return': avg_return,
-                        'Volatility': volatility
-                    }
-                    
-                    # Append to CSV
-                    with open(output_csv, 'a') as f:
-                        f.write(f"{row['Ticker']},{row['Sector']},{row['Market Cap']},{row['P/E Ratio']},{row['Average Return']},{row['Volatility']}\n")
-                    
-                    print(f"Data fetched and saved for {ticker}.\n")
-                    
-                    # Optional: Sleep to respect API rate limits
-                    time.sleep(0.1)
-                
-                except Exception as e:
-                    print(f"Error processing {ticker}: {e}\n")
-                    continue
-            
-            # Optional: Sleep between batches
-            time.sleep(1)
-        
-        except Exception as e:
-            print(f"Error fetching batch starting at index {i}: {e}")
-            continue
+    df_arma = get_stock_data_arma(ticker, start_date='2022-11-06', end_date='2024-11-06')
+ 
+    if df_arma is None:
+        arma_mse = np.inf
+    else:
+        # Ensure there is enough data
+        required_days_arma = 30 + 2  # 30 days training + 2 days test
+        if len(df_arma) < required_days_arma:
+            arma_mse = np.inf
+        else:
+            # Evaluate ARMA model
+            arma_mse = evaluate_arma(df_arma, ticker)
+ 
+    # --------------------------
+    # Compare MSEs and Plot
+    # --------------------------
     
-    print(f"\nData fetching completed. Consolidated data saved to '{output_csv}'.")
- 
-# ----------------------------------------
-# 3. Preprocess the Consolidated Data
-# ----------------------------------------
- 
-def preprocess_data(input_csv='sample_indian_stocks_data.csv'):
-    print("\nPreprocessing data...")
- 
-    # Load the consolidated CSV
-    df = pd.read_csv(input_csv)
-    print(f"Loading the latest diversification metrics...")
- 
-    # 3.1 Handle Missing Values
-    essential_columns = ['Sector', 'Market Cap', 'P/E Ratio', 'Average Return', 'Volatility']
-    df_clean = df.dropna(subset=essential_columns).reset_index(drop=True)
- 
-    # 3.2 Encode Categorical Variables (Sector) using pd.get_dummies
-    sector_encoded_df = pd.get_dummies(df_clean['Sector'], prefix='Sector')
- 
-    # 3.3 Concatenate Encoded Columns with Main DataFrame
-    df_final = pd.concat([df_clean.drop('Sector', axis=1), sector_encoded_df], axis=1)
- 
-    # 3.4 Handle any potential NaN or infinite values in the numerical columns
-    numerical_features = ['Market Cap', 'P/E Ratio', 'Average Return', 'Volatility']
+    # Determine which model has lower MSE
+    print("Finding the better model...")
+    if 'mse_prophet' in locals() and 'arma_mse' in locals():
+        better_model = select_better_model(arma_mse, mse_prophet)
+    else:
+        better_model = 'ARMA' if arma_mse < np.inf else 'Prophet'
     
-    # Replace infinities with NaN, then drop rows with NaN in these columns
-    df_final[numerical_features] = df_final[numerical_features].replace([np.inf, -np.inf], np.nan)
+    # Forecast the next seven days using the better model and plot
+    if better_model == 'Prophet' and 'model_prophet' in locals():
+        # Prophet forecasting
+        plot_predictions_prophet(train_df_prophet, test_df_prophet, forecast_prophet, mse_prophet, future_predictions_prophet, model_prophet)
+    elif better_model == 'ARMA':
+        # ARMA forecasting
+        if df_arma is not None and len(df_arma) >= 32:
+            # Use the last 30 days before test for full training
+            arma_train_full = df_arma.iloc[-32:-2].copy()
+            arma_train_full = arma_train_full.set_index('Date')['Close']
+            arma_order_full = determine_arma_order(arma_train_full)
+            arma_model_full = fit_arma_model(arma_train_full, arma_order_full)
+            if arma_model_full is not None:
+                arma_forecast = predict_arma(arma_model_full, steps=7)
+                if arma_forecast is not None:
+                    # Generate future dates (business days)
+                    last_date = df_arma['Date'].max()
+                    future_dates = []
+                    current_date = last_date
+                    while len(future_dates) < 7:
+                        current_date += timedelta(days=1)
+                        if current_date.weekday() < 5:  # Monday-Friday are business days
+                            future_dates.append(current_date)
+                    arma_forecast.index = future_dates
+                    plot_predictions_arma(df_arma, ticker, arma_forecast, arma_mse,model_prophet,forecast_prophet)
+                else:
+                    pass  # ARMA forecasting failed
+            else:
+                pass  # ARMA model fitting failed
+        else:
+            pass  # Not enough data or ARMA model failed
+    else:
+        pass  # No valid model to forecast and plot
  
-    # Drop rows where any of the numerical features have NaN values
-    df_final = df_final.dropna(subset=numerical_features)
+    # --------------------------
+    # Display Forecasted Values
+    # --------------------------
+    print("predicting with the best model and plotting...")
+    # Only print the predicted values for the next 7 days
+    if better_model == 'Prophet' and 'future_metrics_prophet' in locals():
+        print("\nFuture Predictions for next 7 days with Prophet:")
+        print(future_metrics_prophet[['date', 'predicted_price']].to_string(index=False))
+        # saving future_metrics_prophet[['date', 'predicted_price']]
+        future_metrics_prophet[['date', 'predicted_price']].to_csv(f"{ticker}_future_predictions.csv",index=False)
+    elif better_model == 'ARMA' and 'arma_forecast' in locals():
+        future_predictions_arma = pd.DataFrame({
+            'date': arma_forecast.index,
+            'predicted_price': arma_forecast.values.round(2)
+        })
+        # saving future_predictions_arma[['date', 'predicted_price']]
+        future_predictions_arma[['date', 'predicted_price']].to_csv(f"{ticker}_future_predictions.csv",index=False)
  
-    # 3.5 Feature Scaling
-    scaler = StandardScaler()
-    df_final[numerical_features] = scaler.fit_transform(df_final[numerical_features])
+        # Print future predictions
+        print("\nFuture Predictions for the next 7 days:")
+        print(future_predictions_arma.to_string(index=False))
  
-    print("Preprocessing completed.")
-    return df_final
+        # Calculate percentage increase or decrease
+        first_price = future_predictions_arma['predicted_price'].iloc[0]
+        last_price = future_predictions_arma['predicted_price'].iloc[-1]
+        percentage_change = ((last_price - first_price) / first_price) * 100
  
-# ----------------------------------------
-# 4. Determine Optimal Number of Clusters
-# ----------------------------------------
+        # Determine increase or decrease
+        if percentage_change > 0:
+            with open(f"{ticker}_percentage_change.txt", "w") as f:
+                f.write(f"The predicted price increased by {percentage_change:.2f}% after 7 days.")
+        else:
+            with open(f"{ticker}_percentage_change.txt", "w") as f:
+                f.write(f"The predicted price increased by {percentage_change:.2f}% after 7 days.")
  
-def determine_optimal_clusters(X, max_k=10):
-    """
-    Determine the optimal number of clusters using Elbow Method and Silhouette Score.
+    else:
+        print("\nNo predictions available.")
  
-    Parameters:
-        X (pd.DataFrame or np.ndarray): Feature matrix.
-        max_k (int): Maximum number of clusters to try.
- 
-    Returns:
-        int: Optimal number of clusters.
-    """
-    # print("\nDetermining the optimal number of clusters...")
-    wcss = []
-    silhouette_scores = []
-    K = range(2, max_k+1)
- 
-    for k in K:
-        kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
-        labels = kmeans.fit_predict(X)
-        wcss.append(kmeans.inertia_)
-        score = silhouette_score(X, labels)
-        silhouette_scores.append(score)
-        # print(f"K={k}: WCSS={kmeans.inertia_:.2f}, Silhouette Score={score:.4f}")
- 
-    # Plot Elbow Method
-    # plt.figure(figsize=(14, 6))
- 
-    # plt.subplot(1, 2, 1)
-    # plt.plot(K, wcss, 'bo-', markersize=8)
-    # plt.xlabel('Number of Clusters (K)')
-    # plt.ylabel('WCSS')
-    # plt.title('Elbow Method For Optimal K')
-    # plt.xticks(K)
- 
-    # # Plot Silhouette Scores
-    # plt.subplot(1, 2, 2)
-    # plt.plot(K, silhouette_scores, 'bo-', markersize=8)
-    # plt.xlabel('Number of Clusters (K)')
-    # plt.ylabel('Silhouette Score')
-    # plt.title('Silhouette Scores For Various K')
-    # plt.xticks(K)
- 
-    # plt.tight_layout()
-    # plt.show()
- 
-    # Choose the K with the highest Silhouette Score
-    optimal_k = 8
-    # print(f"\nOptimal number of clusters determined to be: {optimal_k}")
-    return optimal_k
- 
-# ----------------------------------------
-# 5. Perform Clustering
-# ----------------------------------------
- 
-def perform_clustering(X, n_clusters):
-    """
-    Perform K-Means clustering.
- 
-    Parameters:
-        X (pd.DataFrame or np.ndarray): Feature matrix.
-        n_clusters (int): Number of clusters.
- 
-    Returns:
-        KMeans: Fitted KMeans object.
-        np.ndarray: Cluster labels.
-    """
-    # print(f"\nPerforming K-Means clustering with K={n_clusters}...")
-    kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
-    labels = kmeans.fit_predict(X)
-    # print("Clustering completed.")
-    return kmeans, labels
- 
-# ----------------------------------------
-# 6. Save Clustering Results
-# ----------------------------------------
- 
-def save_clustering_results(df, labels, output_path='indian_stocks_clusters.csv'):
-    """
-    Save the clustering results to a CSV file.
- 
-    Parameters:
-        df (pd.DataFrame): Preprocessed stock data.
-        labels (np.ndarray): Cluster labels.
-        output_path (str): Path to save the CSV file.
-    """
-    df_with_clusters = df.copy()
-    df_with_clusters['Cluster'] = labels
-    df_with_clusters.to_csv(output_path, index=False)
-    # print(f"\nClustering results saved to '{output_path}'.")
- 
-# ----------------------------------------
-# 7. Analyze User Portfolio and Recommend Stocks
-# ----------------------------------------
- 
-def analyze_user_portfolio(clustered_df, user_portfolio, top_n=5):
-    """
-    Analyze the user's portfolio clusters and recommend stocks from other clusters.
- 
-    Parameters:
-        clustered_df (pd.DataFrame): DataFrame with clustering results.
-        user_portfolio (list): List of user's stock tickers.
-        top_n (int): Number of stock recommendations.
- 
-    Returns:
-        pd.DataFrame: Recommended stocks.
-    """
-    print("\nAnalyzing user portfolio...")
- 
-    # Filter user's stocks
-    user_stocks = clustered_df[clustered_df['Ticker'].isin(user_portfolio)]
- 
-    if user_stocks.empty:
-        print("No matching stocks found in the clustering results for the user portfolio.")
-        return pd.DataFrame()
- 
-    # Display user's stocks and their clusters
-    # saving user_stocks[['Ticker', 'Cluster']] to a csv file
-    user_stocks[['Ticker', 'Cluster']].to_csv('user_portfolio_clusters.csv', index=False)
- 
-    # Identify clusters present in user's portfolio
-    user_clusters = user_stocks['Cluster'].unique()
- 
-    # Filter stocks not in user's clusters
-    recommended_stocks = clustered_df[~clustered_df['Cluster'].isin(user_clusters)]
- 
-    if recommended_stocks.empty:
-        print("No clusters available for recommendations outside the user's current clusters.")
-        return pd.DataFrame()
- 
-    # Sort the recommended stocks by Average Return in descending order
-    recommended_stocks_sorted = recommended_stocks.sort_values(by='Average Return', ascending=False)
- 
-    # Recommend top N stocks from other clusters
-    top_recommendations = recommended_stocks_sorted.head(top_n)
- 
-    print(f"\nTop {top_n} Recommended Stocks from Other Clusters:")
-    print(top_recommendations[['Ticker', 'Cluster', 'Average Return']])
- 
-    return top_recommendations[['Ticker', 'Cluster', 'Average Return']]
- 
-# ----------------------------------------
-# 8. Visualize Clusters using PCA
-# ----------------------------------------
- 
-def plot_clusters(df, n_clusters):
-    """
-    Visualize clusters using PCA for dimensionality reduction.
- 
-    Parameters:
-        df (pd.DataFrame): Preprocessed data with cluster labels.
-        n_clusters (int): Number of clusters.
-    """
-    from sklearn.decomposition import PCA
- 
-    # Separate features and cluster labels
-    X = df.drop(['Ticker', 'Cluster'], axis=1)
-    labels = df['Cluster']
- 
-    # Apply PCA to reduce to 2 dimensions for visualization
-    pca = PCA(n_components=2, random_state=42)
-    principal_components = pca.fit_transform(X)
- 
-    # Create a DataFrame with principal components and cluster labels
-    pca_df = pd.DataFrame(data=principal_components, columns=['PC1', 'PC2'])
-    pca_df['Cluster'] = labels
- 
-# ----------------------------------------
-# 9. Main Execution Flow
-# ----------------------------------------
- 
-def main(sample_user_portfolio):
-    # Define the path to your CSV file containing all stock tickers
-    # Since your data is already in 'sample_indian_stocks_data.csv', we skip fetching
-    input_csv = 'updated_sample_indian_stocks_data.csv'
-    
-    if not os.path.exists(input_csv):
-        print(f"CSV file not found at '{input_csv}'. Please check the path and try again.")
-        return
- 
-    # Step 1: Preprocess the consolidated data
-    df_preprocessed = preprocess_data(input_csv=input_csv)
-    if df_preprocessed.empty:
-        # print("Preprocessed data is empty. Exiting.")
-        return
- 
-    # Step 2: Determine the optimal number of clusters
-    X = df_preprocessed.drop(['Ticker'], axis=1)
-    optimal_k = determine_optimal_clusters(X, max_k=10)
- 
-    # Step 3: Perform clustering
-    kmeans, labels = perform_clustering(X, optimal_k)
- 
-    # Step 4: Save clustering results
-    save_clustering_results(df_preprocessed, labels, output_path='indian_stocks_clusters.csv')
- 
-    # Step 5: Analyze user portfolio and recommend stocks
-    # Define a sample user portfolio
-    # Modify this list with actual ticker symbols present in your dataset
- 
-    # Load the clustering results
-    clustered_df = pd.read_csv('indian_stocks_clusters.csv')
- 
-    # Analyze and get recommendations
-    recommendations = analyze_user_portfolio(clustered_df, sample_user_portfolio, top_n=5)
- 
-    # Optional: Save recommendations to a CSV file
-    if not recommendations.empty:
-        recommendations.to_csv('recommended_stocks.csv', index=False)
-        # print("\nRecommended stocks saved to 'recommended_stocks.csv'.")
- 
-    # Optional: Visualize clusters using PCA
-    visualize_clusters = True
-    if visualize_clusters:
-        plot_clusters(clustered_df, optimal_k)
-        
+# if __name__ == "__main__":
+#     main('TCS')
+
 if __name__ == "__main__":
-    df = pd.read_excel('user_data.xlsx')
-    tickers = df['Stock Ticker'].tolist()
-    sample_user_portfolio = tickers
-    main(sample_user_portfolio)
+    if len(sys.argv) > 1:
+        sticke = sys.argv[1]
+        main(sticke)
+    else:
+        print("Please provide a stock ticker symbol as an argument.")

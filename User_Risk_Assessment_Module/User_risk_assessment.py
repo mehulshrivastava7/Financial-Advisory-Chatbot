@@ -1,3 +1,4 @@
+"""This code is by nitin"""
 import streamlit as st
  
 # Define the exchange rate from USD to INR

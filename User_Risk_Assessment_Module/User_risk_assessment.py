@@ -1,4 +1,11 @@
 """This code is by nitin"""
+
+""""
+Citation - Title : Financial risk tolerance revisited, the development of a risk assessment instrument
+Authors : John Grable, Ruth H. Lytton
+Journal : Financial Services Review 8 (1999) 163–181
+"""
+
 import streamlit as st
  
 # Define the exchange rate from USD to INR

@@ -1,4 +1,65 @@
-"""This code is by mehul"""
+"""This code is by Mehul Shrivastava"""
+
+"""
+
+
+This idea is to create a diversified stock portfolio by performing clustering analysis.
+
+
+Motivation:
+
+The goal of this module is to enhance portfolio diversification by identifying clusters of stocks based on various financial and market features. 
+
+The output of this is used in the recommendation module. 
+
+The module helps us identify the clusters and then recommend the stocks from other clusters which are performing good. All those stocks are taken as input in the recommendation module and then it chooses the stocks from them 
+to give the final output.
+
+References:
+
+
+I am not using anything directly from these papers, but these are what I came across initially which helped me choose the features and discuss importance of diversifications in detail. 
+
+1. "Creating Diversified Portfolios Using Cluster Analysis" by Karina Marvin:
+
+   - Discusses the importance of diversification and how clustering can be used to achieve a balanced portfolio.
+   
+2. https://medium.com/@facujallia/stock-classification-using-k-means-clustering-8441f75363de
+
+   - I am not sure if a article like this is a source which I can use, if not then below I described a rationale of using these features.
+
+Feature Selection Rationale:
+
+- **Sector:** Categorical variable indicating the industry sector of the stock.
+- **Market Cap:** Represents the size of the company; a key indicator of the stock's risk and potential growth.
+- **Volatility:** A measure of the stock's risk and stability.
+
+Methodology:
+------------
+The script follows these main steps:
+1. **Data Collection:** Fetches historical stock data using yFinance in batches to handle API rate limits.
+2. **Data Preprocessing:** Handles missing values, encodes categorical features, and scales numerical features.
+3. **Optimal Clustering:** Determines the optimal number of clusters using the Elbow Method and Silhouette Score.
+4. **Clustering Analysis:** Performs K-Means clustering on the preprocessed stock data.
+5. **Portfolio Analysis:** Analyzes the user's current stock portfolio and identifies underrepresented clusters.
+6. **Stock Recommendation:** Recommends top-performing stocks from unrepresented clusters to enhance diversification.
+
+Output:
+-------
+1. A CSV file (`indian_stocks_clusters.csv`) containing the clustering results for each stock.
+
+                                                                              """
+
+
+
+
+
+
+
+
+
+
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -177,53 +238,30 @@ def preprocess_data(input_csv='sample_indian_stocks_data.csv'):
  
 def determine_optimal_clusters(X, max_k=10):
     """
-    Determine the optimal number of clusters using Elbow Method and Silhouette Score.
- 
+    Determine the optimal number of clusters using the Elbow Method.
+
     Parameters:
         X (pd.DataFrame or np.ndarray): Feature matrix.
         max_k (int): Maximum number of clusters to try.
- 
+
     Returns:
         int: Optimal number of clusters.
     """
-    # print("\nDetermining the optimal number of clusters...")
     wcss = []
-    silhouette_scores = []
-    K = range(2, max_k+1)
- 
-    for k in K:
+    for k in range(2, max_k + 1):
         kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
-        labels = kmeans.fit_predict(X)
+        kmeans.fit(X)
         wcss.append(kmeans.inertia_)
-        score = silhouette_score(X, labels)
-        silhouette_scores.append(score)
-        # print(f"K={k}: WCSS={kmeans.inertia_:.2f}, Silhouette Score={score:.4f}")
- 
-    # Plot Elbow Method
-    # plt.figure(figsize=(14, 6))
- 
-    # plt.subplot(1, 2, 1)
-    # plt.plot(K, wcss, 'bo-', markersize=8)
-    # plt.xlabel('Number of Clusters (K)')
-    # plt.ylabel('WCSS')
-    # plt.title('Elbow Method For Optimal K')
-    # plt.xticks(K)
- 
-    # # Plot Silhouette Scores
-    # plt.subplot(1, 2, 2)
-    # plt.plot(K, silhouette_scores, 'bo-', markersize=8)
-    # plt.xlabel('Number of Clusters (K)')
-    # plt.ylabel('Silhouette Score')
-    # plt.title('Silhouette Scores For Various K')
-    # plt.xticks(K)
- 
-    # plt.tight_layout()
-    # plt.show()
- 
-    # Choose the K with the highest Silhouette Score
-    optimal_k = 6
-    # print(f"\nOptimal number of clusters determined to be: {optimal_k}")
+
+    # Elbow method to determine optimal K
+    optimal_k = 2
+    for i in range(1, len(wcss) - 1):
+        if (wcss[i - 1] - wcss[i]) < (wcss[i] - wcss[i + 1]):
+            optimal_k = i + 2
+            break
+
     return optimal_k
+
  
 # ----------------------------------------
 # 5. Perform Clustering
@@ -423,49 +461,30 @@ def plot_clusters(df, n_clusters):
 # ----------------------------------------
  
 def main(sample_user_portfolio):
-    # Define the path to your CSV file containing all stock tickers
-    # Since your data is already in 'sample_indian_stocks_data.csv', we skip fetching
-    input_csv = '/home/smehul/Downloads/latest_ARNAV_CODE/mehul/updated_sample_indian_stocks_data.csv'
+    input_csv = 'sample_indian_stocks_data.csv'
     
-    if not os.path.exists(input_csv):
-        print(f"CSV file not found at '{input_csv}'. Please check the path and try again.")
-        return
- 
     # Step 1: Preprocess the consolidated data
     df_preprocessed = preprocess_data(input_csv=input_csv)
     if df_preprocessed.empty:
-        # print("Preprocessed data is empty. Exiting.")
         return
- 
+    
     # Step 2: Determine the optimal number of clusters
     X = df_preprocessed.drop(['Ticker'], axis=1)
     optimal_k = determine_optimal_clusters(X, max_k=10)
- 
+    print(f"Optimal number of clusters determined: {optimal_k}")
+    
     # Step 3: Perform clustering
     kmeans, labels = perform_clustering(X, optimal_k)
- 
-    # Step 4: Save clustering results
-    save_clustering_results(df_preprocessed, labels, output_path='indian_stocks_clusters.csv')
- 
-    # Step 5: Analyze user portfolio and recommend stocks
-    # Define a sample user portfolio
-    # Modify this list with actual ticker symbols present in your dataset
- 
-    # Load the clustering results
-    clustered_df = pd.read_csv('indian_stocks_clusters.csv')
     
-    # Analyze and get recommendations
+    # Step 4: Save clustering results
+    save_clustering_results(df_preprocessed, labels)
+    
+    # Step 5: Analyze user portfolio and recommend stocks
+    clustered_df = pd.read_csv('indian_stocks_clusters.csv')
     recommendations = analyze_user_portfolio(clustered_df, sample_user_portfolio, top_n=10)
-    # Optional: Save recommendations to a CSV file
     if not recommendations.empty:
         recommendations.to_csv('recommended_stocks.csv', index=False)
-        # print("\nRecommended stocks saved to 'recommended_stocks.csv'.")
- 
-    # Optional: Visualize clusters using PCA
-    visualize_clusters = True
-    if visualize_clusters:
-        plot_clusters(clustered_df, optimal_k)
- 
+
 if __name__ == "__main__":
     sample_user_portfolio = ['20MICRONS.NS', 'RELIANCE.NS', 'TCS.NS', 'INFY.NS']
     main(sample_user_portfolio)

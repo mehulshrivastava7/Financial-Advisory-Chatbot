@@ -1,4 +1,4 @@
-"""This is by Arnav and Naneshwar"""
+"""This is by Arnav, Naneshwar and Ramanan"""
 import os
 import sys
 import subprocess
@@ -14,15 +14,21 @@ from transformers import BertTokenizer, BertForSequenceClassification
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Paths and constants
-PROJECT_DIR = "/home/smehul/project/project/"
+PROJECT_DIR = "/home/ramanant/myenv/project"
 USER_DATA_PATH = os.path.join(PROJECT_DIR, "user_data.xlsx")
 ANSWERS_CSV_PATH = os.path.join(PROJECT_DIR, 'answers.csv')
 TOP_ARTICLES_PATH = os.path.join(PROJECT_DIR, 'top_articles.csv')
 
 # Ensure the project directory exists
 os.makedirs(PROJECT_DIR, exist_ok=True)
+if "button_clicked_port" not in st.session_state:
+    st.session_state.button_clicked_port = False
+if "button_clicked_slider2" not in st.session_state:
+    st.session_state.button_clicked_slider2 = False
+if "button_clicked_slider1" not in st.session_state:
+    st.session_state.button_clicked_slider1 = False
 
-# Import custom modules
+
 from nitin import (
     initialize,
     classify_input,
@@ -47,6 +53,8 @@ from nitin import (
     calculate_liability_score,
     calculate_age_score
 )
+if "risk_percentage" not in st.session_state:
+    st.session_state.risk_percentage = 0.5
 
 # Initialize session state variables
 if 'page' not in st.session_state:
@@ -476,6 +484,7 @@ def display_risk_assessment():
             # Provide a simple risk profile based on total score
             max_score = sum([max(q["options"][opt]["score"] for opt in q["options"]) for q in QUESTIONS])
             risk_percentage = (total_score / max_score) * 100
+            st.session_state.risk_percentage = risk_percentage/100
 
             if risk_percentage >= 75:
                 profile = "High Risk Taker"
@@ -500,7 +509,7 @@ def display_risk_assessment():
 
 def main():
     st.sidebar.title("Navigation")
-    pages = ["Home", "Questionnaire", "Risk Assessment", "Portfolio Upload", "Analysis Tools", "Ticker Analysis"]
+    pages = ["Home", "Questionnaire", "Risk Assessment", "Portfolio Upload", "Analysis Tools", "Ticker Analysis","Stock price analysis using other commodities"]
     st.session_state.page = st.sidebar.radio("Go to", pages)
 
     if st.session_state.page == "Home":
@@ -515,6 +524,8 @@ def main():
         display_analysis_tools()
     elif st.session_state.page == "Ticker Analysis":
         display_ticker_analysis()
+    elif st.session_state.page == "Stock price analysis using other commodities":
+        gold()
 
 def display_home():
     st.title("💰 Financial Advisor App")
@@ -682,8 +693,12 @@ def display_analysis_tools():
             analyze_portfolio()
 
     with st.expander("💡 Optimize Investment Allocation"):
-        if st.button("Run Portfolio Optimization"):
-            optimize_portfolio()
+        if not st.session_state.button_clicked_port:
+            if st.button("Run Portfolio Optimization"):
+                portfolio_optimization()
+                st.session_state.button_clicked_port = True
+        else:
+            portfolio_optimization()
 
     with st.expander("📰 Run Sentiment Analysis on News Articles"):
         if st.button("Run Sentiment Analysis"):
@@ -695,14 +710,61 @@ def analyze_portfolio():
         run_script(MEHUL_SCRIPT)
         st.success("Stock Clustering & Recommendations Completed.")
         display_recommendations()
+if "button_clicked_slider" not in st.session_state:
+    st.session_state.button_clicked_slider = False
+#The below portfolio_optimization function is used to run the ramanan1.py script with the risk tolerance value set by the user was written by Ramanan
+def portfolio_optimization():
+    st.title("Portfolio Optimization")
+    RAMANAN_SCRIPT1 = os.path.join(PROJECT_DIR, "ramanan.py")
+    RAMANAN_SCRIPT2 = os.path.join(PROJECT_DIR, "ramanan1.py")
 
-def optimize_portfolio():
-    RAMANAN_SCRIPT = os.path.join(PROJECT_DIR, "ramanan.py")
-    with st.spinner("Optimizing portfolio..."):
-        run_script(RAMANAN_SCRIPT)
-        st.success("Portfolio Optimization Completed.")
-        display_optimization_results()
-        st.session_state.optimization_done = True
+    # Button 1: Run Sharpe ratio maximization
+    if st.button("Run Sharpe ratio maximization") :
+        with st.spinner("Running ramanan.py..."):
+            output = run_script(RAMANAN_SCRIPT1)
+            if output:
+                st.success("Portfolio Optimization Completed.")
+                st.session_state.optimization_done = True  # Set flag to True
+                display_optimization_results()  # Add your display function if needed
+    # Button 1: Run ramanan.py
+    if st.button("Run Returns optimization with risk tolerance") or st.session_state.button_clicked_slider1:
+    # Show the number input (slider) after the button is clicked
+        st.session_state.button_clicked_slider1 = True
+        st.session_state.button_clicked_slider2 = False
+        r = st.number_input(
+            "Select a risk tolerance value between 0 and 1:",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.1
+              # Default value
+        )
+        st.session_state.risk_percentage = r
+        if not st.session_state.button_clicked_slider:
+            
+            st.session_state.button_clicked_slider = True
+        
+        
+        if st.button("submit") or st.session_state.button_clicked_slider2:
+            st.session_state.button_clicked_slider2 = True
+            
+            
+        
+            
+            # Run the script after setting the risk tolerance
+            st.success(f"Risk tolerance set to {st.session_state.risk_percentage}")
+            with st.spinner("Running ramanan1.py with risk tolerance..."):
+                output = run_script(RAMANAN_SCRIPT2, args=[str(st.session_state.risk_percentage)])
+                st.success("Portfolio Optimization Completed.")
+                display_optimization_results1()  # Add your display function if needed
+                
+                st.session_state.button_clicked_slider1 = False
+    
+        
+            
+        
+        
+        
+        
 
 def run_and_display_sentiment_analysis():
     if st.session_state.file_preview is None:
@@ -781,11 +843,34 @@ def display_optimization_results():
     if os.path.exists(optimal_sharpe_path):
         with open(optimal_sharpe_path, 'r') as f:
             optimal_sharpe = f.read()
-        st.subheader("📈 Optimal Sharpe Ratio")
+        st.subheader("📈 Optimal Sharpe_ratio")
         st.write(f"**Sharpe Ratio**: {optimal_sharpe}")
     else:
         st.warning("Sharpe Ratio not available.")
+def display_optimization_results1():
+    optimal_split_path = os.path.join(PROJECT_DIR, "optimal_money_split1.csv")
+    optimal_sharpe_path = os.path.join(PROJECT_DIR, "optimal_sharpe_path1.txt")
 
+    if os.path.exists(optimal_split_path):
+        st.subheader("💰 Optimal Money Split")
+        optimal_split = pd.read_csv(optimal_split_path)
+        st.dataframe(optimal_split)
+        st.download_button(
+            label="Download Optimal Money Split",
+            data=optimal_split.to_csv(index=False).encode('utf-8'),
+            file_name='optimal_money_split1.csv',
+            mime='text/csv'
+        )
+    else:
+        st.error("Optimization results not found.")
+
+    if os.path.exists(optimal_sharpe_path):
+        with open(optimal_sharpe_path, 'r') as f:
+            optimal_sharpe = f.read()
+        st.subheader("📈 Optimal returns")
+        st.write(f"**Optimal returns**: {optimal_sharpe}")
+    else:
+        st.warning("Returns not available.")
 def display_ticker_analysis():
     st.title("🔎 Ticker Analysis")
     st.markdown("Analyze a specific ticker for detailed insights.")
@@ -798,7 +883,7 @@ def display_ticker_analysis():
             st.error("Please enter a valid ticker symbol.")
 
 def analyze_ticker(ticker):
-    MEHUL_PY_SCRIPT = os.path.join(PROJECT_DIR, "mehul.py")
+    MEHUL_PY_SCRIPT = os.path.join(PROJECT_DIR, "mehul_and_ramanan.py")
     with st.spinner(f"Analyzing {ticker}..."):
         run_script(MEHUL_PY_SCRIPT, args=[ticker])
         st.success(f"Analysis for {ticker} Completed.")
@@ -828,6 +913,49 @@ def display_ticker_results(ticker):
         st.write(percentage_change_text)
     else:
         st.warning(f"No percentage change data found for {ticker}.")
+#The below gold function is used to run the ramanan2.py was written by Ramanan
+def gold():
+    Ramanan_script_3=os.path.join(PROJECT_DIR,"ramanan2.py")
+    gold_data=os.path.join(PROJECT_DIR,"gold.csv")
+    all_data=os.path.join(PROJECT_DIR,"all_data.csv")
+    pred_us_path=os.path.join(PROJECT_DIR,"pred_us.txt")
+    pred_ind_path=os.path.join(PROJECT_DIR,"pred_india.txt")
+    oil_path=os.path.join(PROJECT_DIR,"oil.txt")
+    copper_path=os.path.join(PROJECT_DIR,"copper.txt")
+    lithium_path=os.path.join(PROJECT_DIR,"lithium.txt")
+    cobalt_path=os.path.join(PROJECT_DIR,"cobalt.txt")
+    
+    st.title("Prediting stock prices using other commodities")
+    with st.spinner("Running ramanan2.py..."):
+        output = run_script(Ramanan_script_3)
+        if output:
+            df = pd.read_csv(gold_data)
+            st.subheader("Last week's gold prices")# Add your display function if needed
+            st.dataframe(df)
+            with open(pred_us_path, 'r') as f:
+                pred_us = f.read()
+                st.write(f"{pred_us}")
+            with open(pred_ind_path, 'r') as f:
+                pred_ind = f.read()
+                st.write(f"{pred_ind}")
+            df= pd.read_csv(all_data)
+            st.subheader("Last week's prices of some commodities")
+            st.dataframe(df)
+            with open(oil_path, 'r') as f:
+                oil_str = f.read()
+                st.write(f"{oil_str}")
+            with open(copper_path, 'r') as f:
+                copper_str = f.read()
+                st.write(f"{copper_str}")
+            with open(lithium_path, 'r') as f:
+                lithium_str = f.read()
+                st.write(f"{lithium_str}")
+            with open(cobalt_path, 'r') as f:
+                cobalt_str = f.read()
+                st.write(f"{cobalt_str}")
+            
+            
+    
 
 if __name__ == "__main__":
     main()

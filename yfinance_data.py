@@ -1,4 +1,6 @@
 # Extracting information from Yahoo finance dataset
+"""Code involved how to use yfinance"""
+"""This code is by mehul"""
 import yfinance as yf  # Import the yfinance library for accessing financial data
 import pandas as pd  # Import pandas for data manipulation
 import numpy as np  # Import numpy for numerical operations

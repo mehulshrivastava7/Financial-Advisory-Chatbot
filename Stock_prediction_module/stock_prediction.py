@@ -26,15 +26,6 @@ to run this and get stock prices for next seven days."""
 
 
 
-
-
-
-
-
-
-
-
-
 import pandas as pd
 from prophet import Prophet
 import yfinance as yf

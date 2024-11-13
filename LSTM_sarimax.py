@@ -1,5 +1,6 @@
 """Couldn't integrate on time"""
 """This is also for Stock Prediction"""
+
 def get_data_sari(ticker):
     stock = yf.download(ticker, period='1y', progress=False)
     df = stock[['Close']].reset_index()

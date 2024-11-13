@@ -1,4 +1,4 @@
-"""This code is by Ramanan alone, At the time of presentation this was not integrated """
+"""This code is by Ramanan alone, At the time of presentation we were not able to integrate it in due time. """
 def get_data_sari(ticker):
     stock = yf.download(ticker, period='1y', progress=False)
     df = stock[['Close']].reset_index()

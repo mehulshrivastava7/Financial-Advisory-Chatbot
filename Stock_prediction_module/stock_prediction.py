@@ -172,7 +172,7 @@ def get_future_prediction_metrics_prophet(future_predictions):
 # --------------------------
 # 3. ARMA Model Functions
 # --------------------------
- 
+ """We can change the start and end date according to the current date"""
 def get_stock_data_arma(ticker, start_date='2022-11-06', end_date='2024-11-06'):
     """
     Fetches historical stock data for a given ticker for ARMA.
@@ -310,9 +310,9 @@ def evaluate_arma(df, ticker):
     arma_mse = mean_squared_error(arma_test, arma_pred)
     return arma_mse
  
-def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, days_shift=5):
+def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, forecast):
     """
-    Plots the ARMA model predictions and seasonal decomposition with option to shift dates.
+    Plots the ARMA model predictions and seasonal decomposition.
     First day forecast in blue, remaining forecast in red.
  
     Args:
@@ -320,9 +320,7 @@ def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, 
         ticker (str): Stock ticker symbol.
         arma_forecast (pd.Series): Forecasted prices.
         arma_mse (float): MSE of the ARMA model.
-        model: ARMA model object.
         forecast: Forecasted components for plotting.
-        days_shift (int): Number of days to shift the dates (default: 3)
     """
     # Calculate the date 3 months ago from the most recent data point
     last_date = df['Date'].max()
@@ -332,24 +330,17 @@ def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, 
     # Filter historical data to include only the last 3 months
     df_recent = df[df['Date'] >= three_months_ago].copy()
     
-    # Shift dates by the specified number of days
-    df_recent['Date'] = df_recent['Date'] + pd.DateOffset(days=days_shift)
-    
     # Determine the split point between historical and forecasted data
     forecast_start_date = arma_forecast.index[0]
     
-    # Split the recent data into historical (before forecast) and forecast (after forecast start date)
-    historical_data = df_recent[df_recent['Date'] < forecast_start_date + pd.DateOffset(days=days_shift)]
-    
-    # Shift forecast dates
-    shifted_forecast_index = arma_forecast.index + pd.DateOffset(days=days_shift)
-    shifted_forecast = pd.Series(arma_forecast.values, index=shifted_forecast_index)
+    # Split the recent data into historical (before forecast)
+    historical_data = df_recent[df_recent['Date'] < forecast_start_date]
     
     if forecast_start_date > last_test_date:
-        # Adjust the forecast to align with the last test date (shifted)
-        shifted_forecast.index = pd.date_range(
-            start=last_test_date + pd.DateOffset(days=days_shift),
-            periods=len(shifted_forecast),
+        # Adjust the forecast to align with the last test date
+        arma_forecast.index = pd.date_range(
+            start=last_test_date,
+            periods=len(arma_forecast),
             freq='D'
         )
     
@@ -361,12 +352,12 @@ def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, 
              color='blue', label='Historical Data', linewidth=1.5)
     
     # Plot first day forecast in blue
-    plt.plot(shifted_forecast.index[:1], shifted_forecast.values[:1],
+    plt.plot(arma_forecast.index[:1], arma_forecast.values[:1],
              color='blue', linewidth=2)
     
     # Plot remaining forecast days in red
-    if len(shifted_forecast) > 1:
-        plt.plot(shifted_forecast.index[1:], shifted_forecast.values[1:],
+    if len(arma_forecast) > 1:
+        plt.plot(arma_forecast.index[1:], arma_forecast.values[1:],
                 color='red', label='ARMA Forecast', linewidth=2)
     
     # Set plot title and labels
@@ -376,11 +367,10 @@ def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, 
     plt.legend()
     plt.grid(True)
     # Save the plot
-    plt.savefig(f"{ticker}_analysis.png")
- 
-    # model.plot_components(forecast)
- 
-    
+    plt.savefig(f"{ticker}_analysis.png") 
+
+
+ """The below is not required now"""
     # # Seasonal Decomposition Plot
     # try:
     #     # Perform seasonal decomposition
@@ -400,7 +390,9 @@ def plot_predictions_arma(df, ticker, arma_forecast, arma_mse, model, forecast, 
 # --------------------------
 # 4. Model Selection and Plotting
 # --------------------------
- 
+
+
+"""Check the test mse"""
 def select_better_model(arma_mse, prophet_mse):
     """
     Selects the better model based on MSE.
@@ -497,7 +489,7 @@ def main(sticke):
                         if current_date.weekday() < 5:  # Monday-Friday are business days
                             future_dates.append(current_date)
                     arma_forecast.index = future_dates
-                    plot_predictions_arma(df_arma, ticker, arma_forecast, arma_mse,model_prophet,forecast_prophet)
+                    plot_predictions_arma(df_arma, ticker, arma_forecast, arma_mse,forecast_prophet)
                 else:
                     pass  # ARMA forecasting failed
             else:

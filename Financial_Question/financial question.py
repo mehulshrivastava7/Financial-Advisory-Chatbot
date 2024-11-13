@@ -1,9 +1,10 @@
-"""This code is by nitin alone"""
-
 """
-Citation - Title : Financial risk tolerance, An analysis of unexplored factors
-Authors : Ryan Gibson, David Michayluk, Gerhard Van de Venter
-Journal : Financial Services Review 22 (2013) 23-50 
+This code is by Nitin alone.
+
+Citation:
+Title: Financial risk tolerance, An analysis of unexplored factors
+Authors: Ryan Gibson, David Michayluk, Gerhard Van de Venter
+Journal: Financial Services Review 22 (2013) 23-50
 """
 
 import os
@@ -17,9 +18,11 @@ HUGGINGFACE_TOKEN = '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'
 # Global variable for the classifier
 classifier = None
 
+
 def login_huggingface():
     """Login to Hugging Face using your API key."""
     login(token=HUGGINGFACE_TOKEN)
+
 
 def init_classifier():
     """Initialize the zero-shot classification pipeline."""
@@ -30,6 +33,7 @@ def init_classifier():
         device=device
     )
 
+
 def initialize():
     """Initialize the classifier if not already initialized."""
     global classifier
@@ -37,8 +41,17 @@ def initialize():
         login_huggingface()
         classifier = init_classifier()
 
+
 def classify_input(user_input, candidate_labels):
-    """Classify the user input using zero-shot classification."""
+    """Classify the user input using zero-shot classification.
+
+    Args:
+        user_input (str): The input text to classify.
+        candidate_labels (list): The labels to classify against.
+
+    Returns:
+        tuple: The top label and its score.
+    """
     initialize()
     classification = classifier(
         sequences=user_input,
@@ -49,8 +62,14 @@ def classify_input(user_input, candidate_labels):
     score = classification['scores'][0]
     return top_label, score
 
+
 def save_answer(answer, csv_file='answers.csv'):
-    """Save the answer to a CSV file."""
+    """Save the answer to a CSV file.
+
+    Args:
+        answer (dict): A dictionary containing the question, answer, and confidence.
+        csv_file (str): The name of the CSV file to save the answers.
+    """
     fieldnames = ["question", "answer", "confidence"]
     file_exists = os.path.isfile(csv_file)
     with open(csv_file, mode='a', newline='', encoding='utf-8') as file:
@@ -58,6 +77,7 @@ def save_answer(answer, csv_file='answers.csv'):
         if not file_exists:
             writer.writeheader()
         writer.writerow(answer)
+
 
 # Define the list of questions
 questions = [
@@ -204,9 +224,15 @@ questions = [
     },
 ]
 
-# Helper functions
 def get_answer(question):
-    """Retrieve the answer and confidence from the CSV file."""
+    """Retrieve the answer and confidence from the CSV file.
+
+    Args:
+        question (str): The question to retrieve the answer for.
+
+    Returns:
+        tuple: The answer and its confidence score.
+    """
     with open('answers.csv', mode='r', newline='', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
@@ -214,15 +240,33 @@ def get_answer(question):
                 return row['answer'], float(row['confidence'])
     return None, None
 
+
 def get_question_info(key):
-    """Return question info based on the key."""
+    """Return question info based on the key.
+
+    Args:
+        key (str): The key of the question.
+
+    Returns:
+        dict: The question information if found, else None.
+    """
     for question in questions:
         if question['key'] == key:
             return question
     return None
 
+
 def get_score(question, scores_dict, max_score=1):
-    """Calculate the score for a given question."""
+    """Calculate the score for a given question.
+
+    Args:
+        question (str): The question to calculate the score for.
+        scores_dict (dict): A dictionary mapping answers to their scores.
+        max_score (int): The maximum possible score.
+
+    Returns:
+        float: The calculated score for the question.
+    """
     answer, confidence = get_answer(question)
     if answer and confidence is not None:
         answer_score = scores_dict.get(answer, 0)
@@ -233,15 +277,32 @@ def get_score(question, scores_dict, max_score=1):
     else:
         return 0.0
 
-# Score calculation functions
+
 def get_score_from_value(value, scores_dict, max_score=1):
-    """Calculate the score for a given input value."""
+    """Calculate the score for a given input value.
+
+    Args:
+        value (str): The input value to score.
+        scores_dict (dict): A dictionary mapping values to their scores.
+        max_score (int): The maximum possible score.
+
+    Returns:
+        float: The calculated score for the input value.
+    """
     answer_score = scores_dict.get(value, 0)
     return round(answer_score / max_score, 2)
 
-# Rewritten score calculation functions
+
+# Score calculation functions
 def calculate_marital_status_score(value):
-    """Calculate score for marital status."""
+    """Calculate score for marital status.
+
+    Args:
+        value (str): The marital status to score.
+
+    Returns:
+        float: The calculated score for marital status.
+    """
     scores = {
         "Single": 8,
         "Common law": 6,
@@ -252,8 +313,16 @@ def calculate_marital_status_score(value):
     }
     return get_score_from_value(value, scores, max_score=8)
 
+
 def calculate_dependents_score(value):
-    """Calculate score for number of dependents."""
+    """Calculate score for number of dependents.
+
+    Args:
+        value (str): The number of dependents to score.
+
+    Returns:
+        float: The calculated score for dependents.
+    """
     try:
         dependents = int(value)
         score = max(0, 20 - dependents * 2) / 20
@@ -261,13 +330,29 @@ def calculate_dependents_score(value):
     except ValueError:
         return 0.0
 
+
 def calculate_employment_score(value):
-    """Calculate score for employment status."""
+    """Calculate score for employment status.
+
+    Args:
+        value (str): The employment status to score.
+
+    Returns:
+        float: The calculated score for employment status.
+    """
     scores = {"Yes": 1, "No": -1}
     return get_score_from_value(value, scores)
 
+
 def calculate_income_score(value):
-    """Calculate score for monthly income."""
+    """Calculate score for monthly income.
+
+    Args:
+        value (str): The monthly income to score.
+
+    Returns:
+        float: The calculated score for monthly income.
+    """
     scores = {
         "0-25,000": 1,
         "25,000-50,000": 2,
@@ -280,8 +365,16 @@ def calculate_income_score(value):
     }
     return get_score_from_value(value, scores, max_score=8)
 
+
 def calculate_home_score(value):
-    """Calculate score for home ownership status."""
+    """Calculate score for home ownership status.
+
+    Args:
+        value (str): The home ownership status to score.
+
+    Returns:
+        float: The calculated score for home ownership status.
+    """
     scores = {
         "I don't own a home": 0,
         "I'm paying a mortgage": 4,
@@ -289,8 +382,16 @@ def calculate_home_score(value):
     }
     return get_score_from_value(value, scores, max_score=8)
 
+
 def calculate_investment_score(value):
-    """Calculate score for investment experience."""
+    """Calculate score for investment experience.
+
+    Args:
+        value (str): The investment experience to score.
+
+    Returns:
+        float: The calculated score for investment experience.
+    """
     scores = {
         "Mostly Cash Savings and GICs": 0,
         "Bonds, Income funds, GICs": 3,
@@ -299,8 +400,17 @@ def calculate_investment_score(value):
     }
     return get_score_from_value(value, scores, max_score=10)
 
+
 def calculate_market_reaction_score(value):
-    """Calculate score for market reaction."""
+    """Calculate score for market reaction.
+
+    Args:
+        value (str): The market reaction to score.
+
+    Returns:
+        float ```python
+: The calculated score for market reaction.
+    """
     scores = {
         "Sell all investments": 0,
         "Sell some": 3,
@@ -310,8 +420,16 @@ def calculate_market_reaction_score(value):
     }
     return get_score_from_value(value, scores, max_score=10)
 
+
 def calculate_volatility_score(value):
-    """Calculate score for volatility preference."""
+    """Calculate score for volatility preference.
+
+    Args:
+        value (str): The volatility preference to score.
+
+    Returns:
+        float: The calculated score for volatility preference.
+    """
     scores = {
         "Low Volatility": 0,
         "Balanced": 5,
@@ -319,8 +437,16 @@ def calculate_volatility_score(value):
     }
     return get_score_from_value(value, scores, max_score=10)
 
+
 def calculate_investment_horizon_score(value):
-    """Calculate score for investment horizon."""
+    """Calculate score for investment horizon.
+
+    Args:
+        value (str): The investment horizon to score.
+
+    Returns:
+        float: The calculated score for investment horizon.
+    """
     scores = {
         "0-3 years": 0,
         "3-5 years": 5,
@@ -328,8 +454,16 @@ def calculate_investment_horizon_score(value):
     }
     return get_score_from_value(value, scores, max_score=10)
 
+
 def calculate_risk_capacity_score(value):
-    """Calculate score for risk capacity."""
+    """Calculate score for risk capacity.
+
+    Args:
+        value (str): The risk capacity to score.
+
+    Returns:
+        float: The calculated score for risk capacity.
+    """
     scores = {
         "Very low": 0,
         "Low": 3,
@@ -339,8 +473,16 @@ def calculate_risk_capacity_score(value):
     }
     return get_score_from_value(value, scores, max_score=10)
 
+
 def calculate_financial_goals_score(value):
-    """Calculate score for financial goals."""
+    """Calculate score for financial goals.
+
+    Args:
+        value (str): The financial goal to score.
+
+    Returns:
+        float: The calculated score for financial goals.
+    """
     scores = {
         "Retirement": 1,
         "Home purchase": 3,
@@ -350,8 +492,16 @@ def calculate_financial_goals_score(value):
     }
     return get_score_from_value(value, scores, max_score=5)
 
+
 def calculate_life_stage_score(value):
-    """Calculate score for current life stage."""
+    """Calculate score for current life stage.
+
+    Args:
+        value (str): The life stage to score.
+
+    Returns:
+        float: The calculated score for life stage.
+    """
     scores = {
         "Starting out": 5,
         "Career building": 4,
@@ -361,8 +511,16 @@ def calculate_life_stage_score(value):
     }
     return get_score_from_value(value, scores, max_score=5)
 
+
 def calculate_total_assets_score(value):
-    """Calculate score for total assets."""
+    """Calculate score for total assets.
+
+    Args:
+        value (str): The total assets to score.
+
+    Returns:
+        float: The calculated score for total assets.
+    """
     scores = {
         "0-10,00,000": 1,
         "10,00,000-20,00,000": 2,
@@ -374,8 +532,16 @@ def calculate_total_assets_score(value):
     }
     return get_score_from_value(value, scores, max_score=7)
 
+
 def calculate_fixed_assets_score(value):
-    """Calculate score for fixed assets."""
+    """Calculate score for fixed assets.
+
+    Args:
+        value (str): The fixed assets to score.
+
+    Returns:
+        float: The calculated score for fixed assets.
+    """
     scores = {
         "0-5,00,000": 1,
         "5,00,000-10,00,000": 2,
@@ -387,10 +553,18 @@ def calculate_fixed_assets_score(value):
     }
     return get_score_from_value(value, scores, max_score=7)
 
+
 def calculate_return_expectation_score(value):
-    """Calculate score for return expectation."""
+    """Calculate score for return expectation.
+
+    Args:
+        value (str): The return expectation to score.
+
+    Returns:
+        float: The calculated score for return expectation.
+    """
     scores = {
-        "0-2": 1,
+        "0-2": 1 ,
         "2-4": 2,
         "4-6": 3,
         "6-8": 4,
@@ -398,8 +572,16 @@ def calculate_return_expectation_score(value):
     }
     return get_score_from_value(value, scores, max_score=5)
 
+
 def calculate_liability_score(value):
-    """Calculate score for liabilities."""
+    """Calculate score for liabilities.
+
+    Args:
+        value (str): The liabilities to score.
+
+    Returns:
+        float: The calculated score for liabilities.
+    """
     scores = {
         "0-25,000": 8,
         "25,000-50,000": 7,
@@ -412,8 +594,16 @@ def calculate_liability_score(value):
     }
     return get_score_from_value(value, scores, max_score=8)
 
+
 def calculate_age_score(value):
-    """Calculate score based on age."""
+    """Calculate score based on age.
+
+    Args:
+        value (str): The age to score.
+
+    Returns:
+        float: The calculated score based on age.
+    """
     try:
         age = int(value)
         score = max(0, min(10, (65 - age) / 4)) / 10
@@ -424,7 +614,7 @@ def calculate_age_score(value):
 
 # Optional: Main function for testing
 def main():
-    # Example usage
+    """Main function to run the scoring system."""
     # Remove existing answers.csv file
     if os.path.exists('answers.csv'):
         os.remove('answers.csv')
@@ -455,28 +645,29 @@ def main():
 
     # Calculate and display scores
     scores = {
-        "Marital Status Score": calculate_marital_status_score(),
-        "Dependents Score": calculate_dependents_score(),
-        "Employment Score": calculate_employment_score(),
-        "Income Score": calculate_income_score(),
-        "Home Ownership Score": calculate_home_score(),
-        "Investment Experience Score": calculate_investment_score(),
-        "Market Reaction Score": calculate_market_reaction_score(),
-        "Volatility Preference Score": calculate_volatility_score(),
-        "Investment Horizon Score": calculate_investment_horizon_score(),
-        "Risk Capacity Score": calculate_risk_capacity_score(),
-        "Financial Goals Score": calculate_financial_goals_score(),
-        "Life Stage Score": calculate_life_stage_score(),
-        "Total Assets Score": calculate_total_assets_score(),
-        "Fixed Assets Score": calculate_fixed_assets_score(),
-        "Return Expectation Score": calculate_return_expectation_score(),
-        "Liability Score": calculate_liability_score(),
-        "Age Score": calculate_age_score()
+        "Marital Status Score": calculate_marital_status_score("Married"),
+        "Dependents Score": calculate_dependents_score("2"),
+        "Employment Score": calculate_employment_score("Yes"),
+        "Income Score": calculate_income_score("50,000-75,000"),
+        "Home Ownership Score": calculate_home_score("I'm paying a mortgage"),
+        "Investment Experience Score": calculate_investment_score("Mutual Funds and ETFs"),
+        "Market Reaction Score": calculate_market_reaction_score("Hold steady"),
+        "Volatility Preference Score": calculate_volatility_score("Balanced"),
+        "Investment Horizon Score": calculate_investment_horizon_score("5+ years"),
+        "Risk Capacity Score": calculate_risk_capacity_score("Medium"),
+        "Financial Goals Score": calculate_financial_goals_score("Retirement"),
+        "Life Stage Score": calculate_life_stage_score("Career building"),
+        "Total Assets Score": calculate_total_assets_score("30,00,000-40,00,000"),
+        "Fixed Assets Score": calculate_fixed_assets_score("15,00,000-20,00,000"),
+        "Return Expectation Score": calculate_return_expectation_score("4-6"),
+        "Liability Score": calculate_liability_score("25,000-50,000"),
+        "Age Score": calculate_age_score("35")
     }
 
     print("\nYour Scores:")
     for key, value in scores.items():
         print(f"{key}: {value}")
+
 
 if __name__ == "__main__":
     main()

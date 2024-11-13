@@ -1,5 +1,4 @@
-# nitin.py
-
+"""This code is by nitin alone"""
 import os
 import csv
 from transformers import pipeline

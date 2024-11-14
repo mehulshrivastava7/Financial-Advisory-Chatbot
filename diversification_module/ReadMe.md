@@ -34,16 +34,6 @@ Feature Selection Rationale:
 - **Market Cap:** Represents the size of the company; a key indicator of the stock's risk and potential growth.
 - **Volatility:** A measure of the stock's risk and stability.
 
-Methodology:
-------------
-The script follows these main steps:
-1. **Data Collection:** Fetches historical stock data using yFinance in batches to handle API rate limits.
-2. **Data Preprocessing:** Handles missing values, encodes categorical features, and scales numerical features.
-3. **Optimal Clustering:** Determines the optimal number of clusters using the Elbow Method and Silhouette Score.
-4. **Clustering Analysis:** Performs K-Means clustering on the preprocessed stock data.
-5. **Portfolio Analysis:** Analyzes the user's current stock portfolio and identifies underrepresented clusters.
-6. **Stock Recommendation:** Recommends top-performing stocks from unrepresented clusters to enhance diversification.
-
 Output:
 -------
 1. A CSV file (`indian_stocks_clusters.csv`) containing the clustering results for each stock.

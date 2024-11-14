@@ -20,10 +20,9 @@ Overview of the Code:
 ---------------------
 The script is structured into the following main components:
 
-1. **Sentiment Analysis Function:** Uses a BERT model to predict the sentiment of given text (Reddit posts and YouTube comments).
-2. **Reddit Sentiment Analysis:** Fetches recent Reddit posts related to the stock and analyzes their sentiment.
-3. **YouTube Sentiment Analysis:** (Optional) Fetches YouTube comments related to the stock and analyzes their sentiment.
-4. **Risk Score Calculation:** Combines the beta value from yFinance and the adjusted sentiment score to compute the final risk score for the stock.
+1. **Questionnaire:** contains questions with the pre-determined class values
+2. **Data Processing:** implements the facebook/bart-large-mnli model to compute confidence values for each class
+3. **Scoring:** computes the score using the predefined weiights for each class, taking into account the confidence level of each class as well
 
 How to Use:
 -----------

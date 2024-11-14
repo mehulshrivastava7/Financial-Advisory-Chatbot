@@ -18,8 +18,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
-#The ARMA and Prophet code was written by Mehul. The SARIMAX and the LSTM code was written by Ramanan. We weren't able to integrate this part into UI before the presentation."
-#This part was integrated with UI by Ramanan after the presentation.
+"""The code for SARIMAX AND LSTM IS BY RAMANAN"""
+"""We weren't able to integrate it before the presentation, RAMANAN integrated it later."""
 
  
 # Suppress warnings for cleaner output

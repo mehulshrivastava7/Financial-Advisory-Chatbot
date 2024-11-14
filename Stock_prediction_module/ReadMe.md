@@ -6,9 +6,7 @@ _______________________________________
 """ 
 At the time of presentation, we used these two models only for prediction.
 
-There are two more models described in USING_LSTM_SARIMAX.py,
-We were not able to integrate them in time so couldn't show them in the presentation.
-
+There are two more models described in USING_LSTM_SARIMAX.py, they were added later.
 """
 
 """This code is using two models, one is Prophet by FB and the other one is a ARMA model, we are finding the parameters of ARMA model by Finding ACF and PACF and then setting up a threshold on them.

@@ -18,10 +18,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
-"""The code for SARIMAX AND LSTM IS BY RAMANAN"""
-"""We weren't able to integrate it before the presentation, RAMANAN integrated it later."""
+# SARIMAX and the LSTM is by Ramanan. We weren't able to integrate this part into UI before the presentation."
+#Ramanan integrated it later.
 
- 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
  

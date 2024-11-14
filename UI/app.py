@@ -1,4 +1,4 @@
-"""This is by Arnav, Naneshwar and Ramanan"""
+"""This is mostly done by Arnav,slight contibution from Naneshwar and Ramanan"""
 import os
 import sys
 import subprocess

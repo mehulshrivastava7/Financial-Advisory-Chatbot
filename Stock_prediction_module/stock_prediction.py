@@ -15,7 +15,7 @@ For ARMA model we will get the prediction for next seven days after the training
 
 """ The reference I followed is a youtube series (I know youtube can't be trusted so a book is also cited from which I verified that whatever is there in the videos is correct."""
 """Youtube playlist: https://www.youtube.com/playlist?list=PLvcbYUQ5t0UHOLnBzl46_Q6QKtFgfMGc3
-Book reference:  PDF PAGE NUMBER IS 97 AND BOOK PAGE NUMBER IS 84, (BOOK IS THERE IN THE REFERENCES FOLDER).
+Book reference:  PDF PAGE NUMBER IS 97 AND BOOK PAGE NUMBER IS 84.
 Name: Time Series Analysis and Its Applications by Robert H. Shumbay"""
 
 

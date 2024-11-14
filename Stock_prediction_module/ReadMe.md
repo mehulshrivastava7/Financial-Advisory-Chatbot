@@ -1,7 +1,7 @@
 
 """This code is by Mehul Shrivastava."""
 
-""" At the time of presentation, we used these two models only."""
+""" At the time of presentation, we used these two models only for prediction."""
 
 """This code is using two models, one is Prophet by FB and the other one is a ARMA model, we are finding the parameters of ARMA model by Finding ACF and PACF and then setting up a threshold on them.
 For most of the stickers (the stock for which you want the prediction), it will choose the ARMA model because that performed better on most stocks"""

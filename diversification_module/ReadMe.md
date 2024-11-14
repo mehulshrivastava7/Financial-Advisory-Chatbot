@@ -18,7 +18,7 @@ to give the final output.
 References:
 
 
-I am not using anything directly from these papers, but these are what I came across initially which helped me choose the features and discuss importance of diversifications in detail. 
+These are the papers / sources which I used along with what I am using from them:
 
 1. "Creating Diversified Portfolios Using Cluster Analysis" by Karina Marvin:
 

@@ -15,5 +15,5 @@ regressor model as xgboost is one of the best models for any classification or r
 1st and 7th day of the week and the mean returns for the week and the variance for the week as it would be relevant for predicting the future stock prices. In this file
 it also gives the user how much and how the prices of stocks of other commodities like like Oil,copper, lithium, cobalt change for the past 7 days from yfinance and how stock prices of industries related to these commodities will change generally if the commodities' price changes in a certain way. It also gives examples of some such industries for each commodity.
 
-The integration with UI of the xgboost model to predict prices using gold and using giving other commodities prices in the past week and
-telling how the stock prices of industries related to these commodities will change was done by me, Ramanan as can be seen in the app.py file.'''
+The integration with UI of the xgboost model to predict prices using gold and giving other commodities prices in the past week and
+telling how the stock prices of industries related to these commodities will change was done by me too, Ramanan as can be seen in the app.py file.'''

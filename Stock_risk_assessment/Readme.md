@@ -14,16 +14,14 @@ The primary goal of this module is to calculate a risk score for each stock base
 2. **Sentiment Analysis:** Incorporates public sentiment from Reddit and YouTube. 
 The rationale is that investor sentiment significantly impacts stock performance, and thus, it should be considered when assessing stock risk.
 
-Why Calculate Risk Scores?
---------------------------
-The calculated risk scores are intended to be used in a broader user-risk-assessment module. 
+
 The idea is to tailor stock recommendations based on the user's risk tolerance. If a user has a high risk tolerance, riskier stocks can be recommended;
-otherwise, safer stocks will be suggested. This approach aims to provide a more personalized investment recommendation system.
+otherwise, safer stocks will be suggested. This approach aims to provide a more personalized investment recommendation system. This approach is in Recommendation module.
 
-This script is inspired by several research papers that emphasize the importance of sentiment analysis in financial models. One notable reference is:
-"Adding Sentiment to Multi-Factor Equity Strategies" by Corne Reniers and Svetlana Borovkova, which highlights the significance of sentiment scores in risk assessment.
+There are several papers which use sentiment analysis for stock predictions.. One notable reference is:
+"Adding Sentiment to Multi-Factor Equity Strategies" by Corne Reniers and Svetlana Borovkova, which highlights the significance of sentiment scores in risk assessment. And also gives a formula which includes beta, volatility and other factors. Here, we didn't consider other factors.
 
-Data Source:
+Input:
 ------------
 The list of stocks is provided via a CSV file, which includes most of the indian stocks available on yfinance.(around 1200 stocks are there in the csv will be there in the references section.) 
 This file includes various stock metrics like Market Cap, P/E Ratio, Average Return, Volatility, and Sector information. 

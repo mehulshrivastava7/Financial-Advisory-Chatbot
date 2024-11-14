@@ -1,4 +1,4 @@
-"""This code was written by ramanan"""
+"""This code was written by Ramanan"""
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -6,7 +6,6 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import train_test_split
 import yfinance as yf
 import os
-#This file was written by Ramanan
 
 PROJECT_DIR = "/home/ramanant/myenv/project/"
 model1 = xgb.XGBRegressor()
@@ -67,7 +66,6 @@ if len(oil_data) >= 2:
 else:
     print("Not enough data for Oil.")
 copper_path = os.path.join(PROJECT_DIR, 'copper.txt')
-nickel_path = os.path.join(PROJECT_DIR, 'nickel.txt')
 lithium_path = os.path.join(PROJECT_DIR, 'lithium.txt')
 cobalt_path = os.path.join(PROJECT_DIR, 'cobalt.txt')
 # Download copper data (last 7 days)
@@ -82,7 +80,6 @@ if len(copper_data) >= 2:
 else:
     print("Not enough data for Copper.")
 
-# Download nickel data (last 7 days)
 
 
 # Download lithium data (last 7 days, using LIT as a proxy)

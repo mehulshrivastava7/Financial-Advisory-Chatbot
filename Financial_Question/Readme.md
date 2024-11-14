@@ -22,7 +22,7 @@ The script is structured into the following main components:
 
 1. **Questionnaire:** contains questions with the pre-determined class values
 2. **Data Processing:** implements the facebook/bart-large-mnli model to compute confidence values for each class
-3. **Scoring:** computes the score using the predefined weiights for each class, taking into account the confidence level of each class as well
+3. **Scoring:** computes the score using the predefined weights for each class, taking into account the confidence level of each class as well
 
 How to Use:
 -----------

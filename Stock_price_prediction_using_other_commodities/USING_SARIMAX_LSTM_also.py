@@ -18,8 +18,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
-# SARIMAX and the LSTM is by Ramanan. We weren't able to integrate this part into UI before the presentation."
-#Ramanan integrated it later.
+#The SARIMAX and LSTM models codes were written by Ramanan and the ARMA and PROPHET codes were written by Mehul. We weren't able to integrate this part with UI before the presentation."
+#Ramanan integrated this part with UI too after the presentation as it can be seen in the app.py file.
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")

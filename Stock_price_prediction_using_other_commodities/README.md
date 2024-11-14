@@ -13,4 +13,4 @@ models with UI was done by me, Ramanan.
 In the commodities_price_prediction.py, it takes the gold prices for the last 7 days and predicts how much the nifty and the sp500 stock prices will change. I decided to use the xgboost
 regressor model as xgboost is one of the best models for any classification or regression task with tabular data. I also created columns for the price difference between the 
 1st and 7th day of the week and the mean returns for the week and the variance for the week as it would be relevant for predicting the future stock prices. In this file
-it also gives the user how much the prices of stocks of other commodities like like Oil, 
+it also gives the user how much the prices of stocks of other commodities like like Oil, lithium, cobalt,

@@ -8,7 +8,7 @@ But my teammates had already written the code for the prophet and ARMA models, s
 error for the ticker to the user.
 
 The integration with UI had already been done for the ARMA and Prophet models by my teammates, and the integration of the LSTM and SARIMAX
-models with UI was done by me, Ramanan as can be seen in the app.py file.
+models with UI was done by me after the presentation, Ramanan as can be seen in the app.py file.
 
 In the commodities_price_prediction.py, it takes the gold prices for the last 7 days and predicts how much the nifty and the sp500 stock prices will change. I decided to use the xgboost
 regressor model as xgboost is one of the best models for any classification or regression task with tabular data. I also created columns for the price difference between the 

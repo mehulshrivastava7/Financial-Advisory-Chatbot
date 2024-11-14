@@ -1,6 +1,7 @@
-"""This code is by Mehul Shrivastava"""
+"""This code is by Mehul Shrivastava:"""
+--------------------------------------
 
-"""
+
 Description:
 ------------
 This script is designed to evaluate the risk of individual stocks by combining traditional financial metrics (beta value) with public sentiment analysis. 

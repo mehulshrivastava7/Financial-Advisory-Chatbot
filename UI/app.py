@@ -1,4 +1,6 @@
-"""This is mostly done by Arnav,slight contibution from Naneshwar and Ramanan"""
+"""Arnav wrote the code for parts in this code other than the portfolio_optimization part and the predicting stock prices using other commodities part
+ Ramanan wrote the whole code in this file for the integration of portfolio_optimization part and the predicting stock prices using other commodities with UI in this file,
+ There was slight contribution in this whole file from Naneshwar  """
 import os
 import sys
 import subprocess

@@ -100,6 +100,12 @@ questions = [
         "numerical": False
     },
     {
+        "text": "What is your gender?",
+        "key": "gender",
+        "candidate_labels": ["Male", "Female"],
+        "numerical": False
+    },
+    {
         "text": "How would you describe your current life stage?",
         "key": "life_stage",
         "candidate_labels": ["Starting out", "Career building", "Peak earning years", "Pre-retirement", "Retirement"],

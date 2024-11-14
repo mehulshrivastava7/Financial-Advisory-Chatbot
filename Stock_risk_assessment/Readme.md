@@ -33,7 +33,6 @@ Overview of the Code:
 ---------------------
 The script is structured into the following main components:
 
-0. **Setup:** Suppresses unwanted logs and loads the pre-trained BERT model for sentiment analysis.
 1. **Sentiment Analysis Function:** Uses a BERT model to predict the sentiment of given text (Reddit posts and YouTube comments).
 2. **Reddit Sentiment Analysis:** Fetches recent Reddit posts related to the stock and analyzes their sentiment.
 3. **YouTube Sentiment Analysis:** (Optional) Fetches YouTube comments related to the stock and analyzes their sentiment.
